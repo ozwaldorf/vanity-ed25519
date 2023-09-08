@@ -1,5 +1,6 @@
 use std::{
     io::Write,
+    sync::mpsc,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -25,7 +26,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let (tx, rx) = crossbeam_channel::bounded(256);
+    let (tx, rx) = mpsc::channel();
     let counter = Arc::new(AtomicUsize::default());
     let prefix = args.prefix.to_lowercase();
 
