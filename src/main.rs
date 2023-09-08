@@ -41,7 +41,7 @@ fn main() {
                 let pair = Ed25519KeyPair::generate(&mut rng);
                 let pk = Base64::from_bytes(pair.public().as_bytes()).encoded();
 
-                if pk.to_lowercase().starts_with(&prefix) {
+                if pk[..prefix.len()].to_lowercase() == prefix {
                     tx.send((pk, pair.private().as_bytes().to_vec()))
                         .expect("failed to send tx");
                 }
