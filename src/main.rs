@@ -60,8 +60,9 @@ fn main() {
             println!("\r\x1b[KFound:  {pk}\n  Key:  {secret}");
         }
 
-        if timer.elapsed().as_secs() >= 1 {
-            let count = counter.load(Ordering::Relaxed);
+        let elapsed = timer.elapsed().as_millis() as usize;
+        if elapsed >= 1000 {
+            let count = counter.load(Ordering::Relaxed) / elapsed * 1_000;
             write!(stdout, "\r\x1b[K{} keys/second", count).unwrap();
             stdout.flush().unwrap();
             timer = Instant::now();
