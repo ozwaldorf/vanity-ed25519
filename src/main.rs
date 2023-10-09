@@ -1,9 +1,10 @@
 use std::{
+    fs,
     io::Write,
-    sync::mpsc,
+    path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
+        mpsc, Arc,
     },
     time::{Duration, Instant},
 };
@@ -11,21 +12,30 @@ use std::{
 use clap::Parser;
 use fastcrypto::{
     ed25519::Ed25519KeyPair,
-    encoding::Base58,
-    encoding::{Base64, Encoding},
+    encoding::{Base58, Encoding},
     traits::{KeyPair, ToFromBytes},
 };
+use fleek_crypto::{NodeSecretKey, SecretKey};
 use rand::rngs::ThreadRng;
 
 #[derive(Debug, Parser)]
 struct Args {
+    /// Prefix to search for
     prefix: String,
+    /// Output directory to save to
+    #[arg(short, long, default_value = "out")]
+    out_dir: String,
+    /// Number of dedicated threads to spawn
     #[arg(short, long, default_value_t = 8)]
     threads: usize,
 }
 
 fn main() {
     let args = Args::parse();
+    let out_dir: PathBuf = args.out_dir.into();
+    if !out_dir.is_dir() {
+        fs::create_dir_all(&out_dir).expect("Failed to create output directory");
+    }
 
     let (tx, rx) = mpsc::channel();
     let counter = Arc::new(AtomicUsize::default());
@@ -44,8 +54,7 @@ fn main() {
                 let pk = Base58::encode(pair.public().as_bytes());
 
                 if pk[..prefix.len()].to_lowercase() == prefix {
-                    tx.send((pk, pair.private().as_bytes().to_vec()))
-                        .expect("failed to send tx");
+                    tx.send((pk, pair.private())).expect("failed to send tx");
                 }
 
                 counter.fetch_add(1, Ordering::Relaxed);
@@ -58,8 +67,10 @@ fn main() {
 
     loop {
         if let Ok((pk, secret)) = rx.recv_timeout(Duration::from_millis(100)) {
-            let secret = Base64::from_bytes(&secret).encoded();
-            println!("\r\x1b[KFound:  {pk}\n  Key:  {secret}");
+            println!("\r\x1b[KFound {pk}");
+            let pem = NodeSecretKey::from(secret).encode_pem();
+            let path = out_dir.join(pk).with_extension("pem");
+            fs::write(path, pem).expect("Failed to write pem file");
         }
 
         let elapsed = timer.elapsed().as_millis() as usize;
