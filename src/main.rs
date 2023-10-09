@@ -11,7 +11,8 @@ use std::{
 use clap::Parser;
 use fastcrypto::{
     ed25519::Ed25519KeyPair,
-    encoding::Base64,
+    encoding::Base58,
+    encoding::{Base64, Encoding},
     traits::{KeyPair, ToFromBytes},
 };
 use rand::rngs::ThreadRng;
@@ -40,7 +41,7 @@ fn main() {
             let mut rng = ThreadRng::default();
             loop {
                 let pair = Ed25519KeyPair::generate(&mut rng);
-                let pk = Base64::from_bytes(pair.public().as_bytes()).encoded();
+                let pk = Base58::encode(pair.public().as_bytes());
 
                 if pk[..prefix.len()].to_lowercase() == prefix {
                     tx.send((pk, pair.private().as_bytes().to_vec()))
